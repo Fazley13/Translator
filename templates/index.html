@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Translator</title>
+  <meta name="description" content="Translate text between {{ count }} languages.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C2512D'/%3E%3Cpath d='M7 9h12v9H12l-4 3v-3H7z' fill='%23fff'/%3E%3Cpath d='M14 14h11v9h-1v3l-4-3h-6z' fill='%23fff' fill-opacity='.55'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=Newsreader:opsz,wght@6..72,400..600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+{%- macro lang_options(items, selected="") -%}
+  {%- for l in items -%}
+    <option value="{{ l.code }}"{% if l.code == selected %} selected{% endif %}>{{ l.name }}</option>
+  {%- endfor -%}
+{%- endmacro %}
+
+  <div class="app">
+    <header class="top">
+      <a class="brand" href="/" aria-label="Translator home">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="currentColor"/>
+          <path d="M7 9h12v9h-7l-4 3v-3H7z" fill="#fff"/>
+          <path d="M14 14h11v9h-1v3l-4-3h-6z" fill="#fff" fill-opacity=".55"/>
+        </svg>
+        <span>Translator</span>
+      </a>
+    </header>
+
+    <div class="intro">
+      <h1>Translate between {{ count }} languages</h1>
+      <p>Type or paste some text, then press Translate (or Ctrl+Enter).</p>
+    </div>
+
+    <main>
+      <div class="pair">
+        <!-- Source -->
+        <section class="panel" aria-label="Source text">
+          <div class="panel-head">
+            <label class="sr-only" for="srcLang">Translate from</label>
+            <select id="srcLang" class="lang-select">
+              <option value="auto">Detect language</option>
+              <optgroup label="Popular">{{ lang_options(popular, "en") }}</optgroup>
+              <optgroup label="All languages">{{ lang_options(others) }}</optgroup>
+            </select>
+            <label class="auto" title="Sends a request after you stop typing. Leave off if Google rate-limits you.">
+              <input type="checkbox" id="autoToggle"> Translate as I type
+            </label>
+          </div>
+          <div class="paper">
+            <textarea id="srcText" maxlength="{{ max_chars }}" dir="auto" spellcheck="true"
+              placeholder="Write something to translate" autofocus></textarea>
+          </div>
+          <div class="panel-foot">
+            <div class="tools">
+              <button type="button" class="icon-btn" id="speakSrc" aria-label="Listen to the original text" title="Listen">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              </button>
+              <button type="button" class="icon-btn" id="clearText" aria-label="Clear text" title="Clear">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+            <div class="foot-right">
+              <span class="count" id="count" aria-live="off">0 / {{ "{:,}".format(max_chars) }}</span>
+              <button type="button" class="btn btn-primary" id="translateBtn">Translate</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Swap -->
+        <button type="button" class="swap" id="swapBtn" aria-label="Swap languages" title="Swap languages">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+
+        <!-- Result -->
+        <section class="panel result" aria-label="Translation">
+          <div class="panel-head">
+            <label class="sr-only" for="tgtLang">Translate to</label>
+            <select id="tgtLang" class="lang-select">
+              <optgroup label="Popular">{{ lang_options(popular, "bn") }}</optgroup>
+              <optgroup label="All languages">{{ lang_options(others) }}</optgroup>
+            </select>
+          </div>
+          <div class="paper">
+            <div id="outText" class="out" dir="auto" aria-live="polite" data-phase="empty"></div>
+          </div>
+          <div class="panel-foot">
+            <div class="tools">
+              <button type="button" class="icon-btn" id="speakOut" aria-label="Listen to the translation" title="Listen" disabled>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              </button>
+              <button type="button" class="btn" id="copyBtn" disabled>Copy translation</button>
+            </div>
+            <span class="status" id="status" role="status"></span>
+          </div>
+        </section>
+      </div>
+
+      <section class="recent" id="recent" hidden aria-labelledby="recentTitle">
+        <div class="recent-head">
+          <h2 id="recentTitle">Recent translations</h2>
+          <button type="button" class="btn btn-quiet" id="clearHistory">Clear history</button>
+        </div>
+        <ul class="history" id="historyList"></ul>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>Your text is sent to Google Translate to be translated. Recent translations are kept only in this browser. Up to {{ "{:,}".format(max_chars) }} characters at a time.</p>
+    </footer>
+  </div>
+
+  <p class="toast" id="toast" role="status" aria-live="polite" hidden></p>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
